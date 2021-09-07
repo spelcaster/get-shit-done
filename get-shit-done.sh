@@ -43,24 +43,24 @@ work()
     ini_file="$HOME/.config/get-shit-done.ini"
 
     site_list=( 'reddit.com' 'forums.somethingawful.com' 'somethingawful.com'
-		'digg.com' 'break.com' 'news.ycombinator.com'
-		'infoq.com' 'bebo.com' 'twitter.com'
-		'facebook.com' 'blip.com' 'youtube.com'
-		'vimeo.com' 'delicious.com' 'flickr.com'
-		'friendster.com' 'hi5.com' 'linkedin.com'
-		'livejournal.com' 'meetup.com' 'myspace.com'
-		'plurk.com' 'stickam.com' 'stumbleupon.com'
-		'yelp.com' 'slashdot.org' )
+        'digg.com' 'break.com' 'news.ycombinator.com'
+        'infoq.com' 'bebo.com' 'twitter.com'
+        'facebook.com' 'blip.com' 'youtube.com'
+        'vimeo.com' 'delicious.com' 'flickr.com'
+        'friendster.com' 'hi5.com' 'linkedin.com'
+        'livejournal.com' 'meetup.com' 'myspace.com'
+        'plurk.com' 'stickam.com' 'stumbleupon.com'
+        'yelp.com' 'slashdot.org' )
 
     # add sites from ini file
     # to site_list array
     sites_from_ini $ini_file
 
     file="$1"
-    
+
     # check if work mode has been set
-    if grep $start_token $file &> /dev/null; then
-        if grep $end_token $file &> /dev/null; then
+    if grep "$start_token" "$file" &> /dev/null; then
+        if grep "$end_token" "$file" &> /dev/null; then
             exit_with_error $E_ALREADY_SET "Work mode already set."
         fi
     fi
@@ -69,6 +69,12 @@ work()
 
     for site in "${site_list[@]}"
     do
+        echo "Masking '$site'"
+        if grep -P "\s$site" "$file" &> /dev/null; then
+            echo "'$site' is already masked"
+            continue
+        fi
+
         echo -e "127.0.0.1\t$site" >> $file
         echo -e "127.0.0.1\twww.$site" >> $file
     done
@@ -118,6 +124,8 @@ sites_from_ini()
 {
     [ -e "$1" ] || return 1
 
+    echo "Reading domains from '$1'"
+
     # read all lines from ini file
     while read line
     do
@@ -126,25 +134,27 @@ sites_from_ini()
         key=${arr[0]}
         value=${arr[1]}
 
-        # just save sites variable
-        if [ "sites" == $key ]; then
-            # remove trailing commas
-            clean_arr=$(echo "$value" | sed "s/,*$//")
-            # and leading
-            clean_arr=$(echo "$clean_arr" | sed "s/^,*//")
-            sites_arr=$(echo $clean_arr | tr ',' "\n")
-
-            # get array size
-            count=${#site_list[*]}
-
-            # add all sites to global sites array 
-            for site in $sites_arr
-            do
-                site_list[$count]=$site
-                ((count++))
-            done
+        if [ "sites" != $key ]; then
+            break
         fi
-        
+
+        # just save sites variable
+        # remove trailing commas
+        clean_arr=$(echo "$value" | sed "s/,*$//")
+        # and leading
+        clean_arr=$(echo "$clean_arr" | sed "s/^,*//")
+        sites_arr=$(echo $clean_arr | tr ',' "\n")
+
+        # get array size
+        count=${#site_list[*]}
+
+        # add all sites to global sites array
+        for site in $sites_arr
+        do
+            site_list[$count]=$site
+            ((count++))
+        done
+
     done < "$1"
 }
 
@@ -162,7 +172,7 @@ curr_user=$(to_lower $curr_user)
 uname=$(trim `uname`)
 
 if [ "Linux" == $uname ]; then
-    restart_network="/etc/init.d/networking restart"
+    restart_network="systemctl restart NetworkManager"
 elif [ "Darwin" == $uname ]; then
     restart_network="dscacheutil -flushcache"
 else
