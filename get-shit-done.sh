@@ -59,8 +59,8 @@ work()
     file="$1"
 
     # check if work mode has been set
-    if grep "$start_token" "$file" &> /dev/null; then
-        if grep "$end_token" "$file" &> /dev/null; then
+    if grep -q "$start_token" "$file" &> /dev/null; then
+        if grep -q "$end_token" "$file" &> /dev/null; then
             exit_with_error $E_ALREADY_SET "Work mode already set."
         fi
     fi
@@ -114,6 +114,13 @@ d
     [ -e "$1" ] || exit_with_error $E_NO_HOSTS_FILE "No hosts file found"
 
     file=$1
+
+    hasBegin=$(grep -q "$start_token" "$file" &> /dev/null; echo $?)
+    hasEnd=$(grep -q "$end_token" "$file" &> /dev/null; echo $?)
+
+    if [ $hasBegin != 0 ] || [ $hasEnd != 0 ] ; then
+        exit_with_error $E_ALREADY_SET "Work mode have not been set."
+    fi
 
     sed --in-place -e "$sed_script" $file
 
